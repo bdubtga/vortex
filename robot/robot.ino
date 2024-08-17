@@ -28,10 +28,26 @@ int brightness = 0;
 RF24 ReceiveRadio(9, 10);
 int retries = 0;
 
+int mot1_INA = 7;
+int mot1_INB = 8;
+int mot1_PWM = 5;
+int mot2_INA = A3;
+int mot2_INB = A4;
+int mot2_PWM = 6;
+
+int leftstick_buffer = 100;
+int leftstick_center = 1500;
+int rightstick_buffer = 100;
+int rightstick_center = 1500;
+
+int armed = 0;
+
+Servo weapon;
+
 void setup()
 {
     pixels.begin();       // INITIALIZE NeoPixel strip object (REQUIRED)
-    Serial.begin(115200); // Start serial monitor (115200 for RF Nano)
+    Serial.begin(115200); // Start Serial monitor (115200 for RF Nano)
     // Configure and start RF radio
     ReceiveRadio.begin();
     ReceiveRadio.setAddressWidth(5);
@@ -41,7 +57,16 @@ void setup()
     ReceiveRadio.setDataRate(RF24_250KBPS); // experiment with this to try get more range
     ReceiveRadio.startListening();          // Changes RF module to recieve mode
 
-    // Define an array of colors (R, G, B)
+    // Set the motor pins as outputs
+    pinMode(mot1_INA, OUTPUT);
+    pinMode(mot1_INB, OUTPUT);
+    pinMode(mot1_PWM, OUTPUT);
+    pinMode(mot2_INA, OUTPUT);
+    pinMode(mot2_INB, OUTPUT);
+    pinMode(mot2_PWM, OUTPUT);
+
+    weapon.attach(3);
+    weapon.write(180);
 
     // Clear the pixels to start
     pixels.clear();
@@ -62,6 +87,23 @@ void setup()
     pixels.show();
 }
 
+int arm()
+{
+    armed = 1;
+}
+int disarm()
+{
+    armed = 0;
+    digitalWrite(mot1_INA, LOW);
+    digitalWrite(mot1_INB, LOW);
+    analogWrite(mot1_PWM, 0);
+    digitalWrite(mot2_INA, LOW);
+    digitalWrite(mot2_INB, LOW);
+    analogWrite(mot2_PWM, 0);
+
+    weapon.write(0);
+}
+
 void loop()
 {
 
@@ -80,7 +122,18 @@ void loop()
             }
         }
         Serial.println(); // Move to the next line after printing all data
+
         if (data[4] > 1500)
+        {
+            // arm
+            armed = 1;
+        }
+        else
+        {
+            armed = 0;
+        }
+
+        if (armed == 1)
         {
             // armed
             pixels.setPixelColor(0, pixels.Color(0, 255, 0)); // Green color
@@ -92,10 +145,92 @@ void loop()
                 pixels.setPixelColor(0, pixels.Color(255, 255, 0)); // Red color
                 pixels.setPixelColor(1, pixels.Color(255, 255, 0)); // Red color
                 pixels.show();
+
+                weapon.write(map(data[8], 1500, 2000, 0, 255));
             }
             else if (data[7] < 1500)
             {
                 // weapon off
+            }
+            // Left stick handling
+            if (data[2] > leftstick_center + leftstick_buffer)
+            {
+                // Move forward
+                digitalWrite(mot1_INA, HIGH);
+                digitalWrite(mot1_INB, LOW);
+
+                int pwmValue = map(data[2], leftstick_center + leftstick_buffer, 2000, 0, 255);
+                Serial.print("  mapL Forward: ");
+                Serial.println(pwmValue);
+                analogWrite(mot1_PWM, pwmValue);
+            }
+            else if (data[2] < leftstick_center - leftstick_buffer)
+            {
+                // Move backward
+                digitalWrite(mot1_INA, LOW);
+                digitalWrite(mot1_INB, HIGH);
+                if (data[2] < 500)
+                {
+                    int pwmValue = 255;
+                    Serial.print("  mapL Backward: ");
+                    Serial.println(pwmValue);
+                    analogWrite(mot1_PWM, pwmValue);
+                }
+                else if (data[2] > 500)
+                {
+                    int pwmValue = map(data[2], leftstick_center - leftstick_buffer, 1000, 0, 255);
+                    Serial.print("  mapL Backward: ");
+                    Serial.println(pwmValue);
+                    analogWrite(mot1_PWM, pwmValue);
+                }
+            }
+            else
+            {
+                // Stop motors
+                digitalWrite(mot1_INA, LOW);
+                digitalWrite(mot1_INB, LOW);
+                analogWrite(mot1_PWM, 0);
+            }
+
+            // Right stick handling
+            if (data[1] > rightstick_center + rightstick_buffer)
+            {
+                // Turn right
+                digitalWrite(mot2_INA, LOW);
+                digitalWrite(mot2_INB, HIGH);
+
+                int pwmValue = map(data[1], rightstick_center + rightstick_buffer, 2000, 0, 255);
+                Serial.print("  mapR Right: ");
+                Serial.println(pwmValue);
+                analogWrite(mot2_PWM, pwmValue);
+            }
+            else if (data[1] < rightstick_center - rightstick_buffer)
+            {
+                // Turn left
+                digitalWrite(mot2_INA, HIGH);
+                digitalWrite(mot2_INB, LOW);
+
+                if (data[1] < 500)
+                {
+                    int pwmValue = 255;
+                    Serial.print("  mapR Left: ");
+                    Serial.println(pwmValue);
+                    analogWrite(mot2_PWM, pwmValue);
+                }
+                else if (data[1] > 500)
+                {
+                    int pwmValue = map(data[1], rightstick_center - rightstick_buffer, 1000, 0, 255);
+                    Serial.print("  mapR Left: ");
+                    Serial.println(pwmValue);
+                    analogWrite(mot2_PWM, pwmValue);
+                }
+            }
+            else
+            {
+                // Stop turning motors
+                digitalWrite(mot2_INA, LOW);
+                digitalWrite(mot2_INB, LOW);
+                analogWrite(mot2_PWM, 0);
             }
         }
         else
@@ -104,6 +239,15 @@ void loop()
             pixels.setPixelColor(0, pixels.Color(0, 0, 0)); // Red color
             pixels.setPixelColor(1, pixels.Color(0, 0, 0)); // Red color
             pixels.show();
+
+            digitalWrite(mot1_INA, LOW);
+            digitalWrite(mot1_INB, LOW);
+            analogWrite(mot1_PWM, 0);
+            digitalWrite(mot2_INA, LOW);
+            digitalWrite(mot2_INB, LOW);
+            analogWrite(mot2_PWM, 0);
+
+            weapon.write(0);
         }
     }
     else
@@ -111,7 +255,7 @@ void loop()
         retries++;
         Serial.print("Faile to recieve data. Attempt: ");
         Serial.println(retries);
-        if (retries > 2)
+        if (retries > 5)
         {
             for (int i = 0; i < 1; i++)
             {
@@ -119,13 +263,9 @@ void loop()
                 pixels.setPixelColor(0, pixels.Color(255, 0, 0)); // Red color
                 pixels.setPixelColor(1, pixels.Color(255, 0, 0)); // Red color
                 pixels.show();
-                delay(500); // Wait for delayTime milliseconds
 
-                // Turn off the lights
-                pixels.setPixelColor(0, pixels.Color(0, 0, 0)); // Off
-                pixels.setPixelColor(1, pixels.Color(0, 0, 0)); // Off
-                pixels.show();
-                delay(500); // Wait for delayTime milliseconds again
+                // disarm the bot
+                disarm();
             }
         }
         if (retries > 15)
