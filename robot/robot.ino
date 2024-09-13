@@ -42,7 +42,7 @@ int rightstick_center = 1500;
 
 int armed = 0;
 
-Servo weapon;
+Servo myservo;
 
 void setup()
 {
@@ -65,8 +65,10 @@ void setup()
     pinMode(mot2_INB, OUTPUT);
     pinMode(mot2_PWM, OUTPUT);
 
-    weapon.attach(3);
-    weapon.write(180);
+    myservo.attach(3);
+    delay(1000);
+    myservo.write(30);
+    delay(5000);
 
     // Clear the pixels to start
     pixels.clear();
@@ -101,7 +103,7 @@ int disarm()
     digitalWrite(mot2_INB, LOW);
     analogWrite(mot2_PWM, 0);
 
-    weapon.write(0);
+    myservo.write(30);
 }
 
 void loop()
@@ -146,11 +148,12 @@ void loop()
                 pixels.setPixelColor(1, pixels.Color(255, 255, 0)); // Red color
                 pixels.show();
 
-                weapon.write(map(data[8], 1500, 2000, 0, 255));
+                myservo.write(100);
             }
             else if (data[7] < 1500)
             {
                 // weapon off
+                myservo.write(30);
             }
             // Left stick handling
             if (data[2] > leftstick_center + leftstick_buffer)
@@ -247,7 +250,7 @@ void loop()
             digitalWrite(mot2_INB, LOW);
             analogWrite(mot2_PWM, 0);
 
-            weapon.write(0);
+            myservo.write(30);
         }
     }
     else
