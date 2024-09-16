@@ -11,13 +11,13 @@
 #include <nRF24L01.h>
 #include <PPMReader.h>
 
-const int datanum = 10;
+const int datanum = 12;
 int data[datanum];
 
 RF24 SendRadio(9, 10);
 
 byte ppmPin = 3;
-byte ppmChannels = 10;
+byte ppmChannels = 12;
 PPMReader ppm(ppmPin, ppmChannels);
 
 void setup()
