@@ -136,7 +136,7 @@ void handleArmedState()
         pixels.setPixelColor(0, pixels.Color(255, 255, 0));
         pixels.setPixelColor(1, pixels.Color(255, 255, 0));
         pixels.show();
-        myservo.write(80);
+        myservo.write(map(data[9], 1500, 2000, 30, 160));
     }
     else
     {
@@ -214,8 +214,6 @@ void disarm()
 void handleRetries()
 {
     retries++;
-    Serial.print("Failed to receive data. Attempt: ");
-    Serial.println(retries);
 
     if (retries > 5)
     {

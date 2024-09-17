@@ -8,7 +8,7 @@
 #define NEO_NUMPIXELS 2   // Popular NeoPixel ring size
 #define NEO_BRIGHTNESS 50 // Adjust brightness to save power
 #define RETRY_LIMIT 15
-#define DATA_SIZE 10
+#define DATA_SIZE 12
 #define MOTOR_STOP 0
 
 Adafruit_NeoPixel pixels(NEO_NUMPIXELS, NEO_PIN, NEO_GRB + NEO_KHZ800);
@@ -136,7 +136,7 @@ void handleArmedState()
         pixels.setPixelColor(0, pixels.Color(255, 255, 0));
         pixels.setPixelColor(1, pixels.Color(255, 255, 0));
         pixels.show();
-        myservo.write(100);
+        myservo.write(map(data[11], 1500, 2000, 30, 160));
     }
     else
     {
@@ -156,11 +156,11 @@ void handleLeftStick()
 {
     if (data[2] > leftstick_center + leftstick_buffer)
     {
-        moveMotor(mot1_INA, mot1_INB, mot1_PWM, map(data[2], leftstick_center + leftstick_buffer, 2000, 0, 255), "Forward");
+        moveMotor(mot1_INA, mot1_INB, mot1_PWM, map(data[2], leftstick_center + leftstick_buffer, 2000, 0, 255), "forward");
     }
     else if (data[2] < leftstick_center - leftstick_buffer)
     {
-        moveMotor(mot1_INA, mot1_INB, mot1_PWM, map(data[2], 500, 1000, 255, 0), "Backward");
+        moveMotor(mot1_INA, mot1_INB, mot1_PWM, map(data[2], leftstick_center - leftstick_buffer, 1000, 0, 255), "backward");
     }
     else
     {
@@ -172,11 +172,11 @@ void handleRightStick()
 {
     if (data[1] > rightstick_center + rightstick_buffer)
     {
-        moveMotor(mot2_INA, mot2_INB, mot2_PWM, map(data[1], rightstick_center + rightstick_buffer, 2000, 0, 255), "Right");
+        moveMotor(mot2_INA, mot2_INB, mot2_PWM, map(data[1], rightstick_center + rightstick_buffer, 2000, 0, 255), "backward");
     }
     else if (data[1] < rightstick_center - rightstick_buffer)
     {
-        moveMotor(mot2_INA, mot2_INB, mot2_PWM, map(data[1], 500, 1000, 255, 0), "Left");
+        moveMotor(mot2_INA, mot2_INB, mot2_PWM, map(data[1], rightstick_center - rightstick_buffer, 1000, 0, 255), "forward");
     }
     else
     {
@@ -186,12 +186,24 @@ void handleRightStick()
 
 void moveMotor(int INA, int INB, int PWM, int pwmValue, const char *direction)
 {
-    digitalWrite(INA, HIGH);
-    digitalWrite(INB, LOW);
+    if (strcmp(direction, "forward") == 0)
+    {
+        digitalWrite(INA, HIGH);
+        digitalWrite(INB, LOW);
+    }
+    else if (strcmp(direction, "backward") == 0)
+    {
+        digitalWrite(INA, LOW);
+        digitalWrite(INB, HIGH);
+    }
+    else
+    {
+        // Stop the motor if the direction is not recognized
+        digitalWrite(INA, LOW);
+        digitalWrite(INB, LOW);
+    }
+
     analogWrite(PWM, pwmValue);
-    Serial.print(direction);
-    Serial.print(": ");
-    Serial.println(pwmValue);
 }
 
 void stopMotor(int INA, int INB, int PWM)
